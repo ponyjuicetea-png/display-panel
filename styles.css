@@ -1,0 +1,613 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --ink: #172033;
+  --muted: #677186;
+  --panel: #ffffff;
+  --line: #d9e1ef;
+  --red: #dc3f45;
+  --teal: #008f8a;
+  --gold: #f3b735;
+  --green: #5e9f45;
+  --violet: #7257bd;
+  --shadow: 0 20px 55px rgba(23, 32, 51, 0.13);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fb 0%, #edf7f5 52%, #f9f2f4 100%);
+  color: var(--ink);
+  font-family:
+    "Microsoft JhengHei",
+    "Noto Sans TC",
+    system-ui,
+    sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--teal);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: 2.2rem;
+  line-height: 1.05;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+.score-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.score-strip div,
+.status-pill,
+.called-count {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 24px rgba(23, 32, 51, 0.07);
+}
+
+.score-strip div {
+  min-height: 66px;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.score-strip span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.score-strip strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.55rem;
+}
+
+.game-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.05fr) minmax(330px, 0.95fr);
+  grid-template-areas:
+    "room board"
+    "wheel board"
+    "history players";
+  gap: 18px;
+  align-items: start;
+}
+
+.wheel-panel,
+.board-panel,
+.history-panel,
+.room-panel,
+.players-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.room-panel {
+  grid-area: room;
+  padding: 16px;
+}
+
+.wheel-panel {
+  grid-area: wheel;
+  padding: 20px;
+}
+
+.board-panel {
+  grid-area: board;
+  padding: 18px;
+}
+
+.history-panel {
+  grid-area: history;
+  padding: 16px;
+}
+
+.players-panel {
+  grid-area: players;
+  padding: 16px;
+}
+
+.room-form {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr);
+  gap: 10px;
+}
+
+.room-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.room-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.room-form input:focus {
+  outline: 3px solid rgba(0, 143, 138, 0.18);
+  border-color: rgba(0, 143, 138, 0.55);
+}
+
+.room-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.room-actions button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.room-actions button:hover:not(:disabled) {
+  border-color: rgba(0, 143, 138, 0.45);
+}
+
+.room-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.active-room {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(0, 143, 138, 0.45);
+  border-radius: 8px;
+  background: rgba(0, 143, 138, 0.07);
+}
+
+.active-room span,
+.room-message {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.active-room strong {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.room-message {
+  min-height: 22px;
+  margin-top: 9px;
+}
+
+.wheel-stage {
+  position: relative;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  aspect-ratio: 1;
+}
+
+#wheelCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  filter: drop-shadow(0 22px 26px rgba(23, 32, 51, 0.18));
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-top: 42px solid var(--ink);
+  filter: drop-shadow(0 5px 5px rgba(23, 32, 51, 0.22));
+  z-index: 2;
+}
+
+.result-badge {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 118px;
+  height: 118px;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 8px solid #fff;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(23, 32, 51, 0.26);
+}
+
+.result-badge span {
+  align-self: end;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.result-badge strong {
+  align-self: start;
+  font-size: 2.15rem;
+  line-height: 1;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.controls button {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease;
+}
+
+.controls button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(0, 143, 138, 0.38);
+  box-shadow: 0 12px 22px rgba(23, 32, 51, 0.1);
+}
+
+.controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.controls .primary-button {
+  border-color: transparent;
+  background: var(--red);
+  color: #fff;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.status-pill,
+.called-count {
+  min-width: 74px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill.win {
+  color: #fff;
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(48px, 1fr));
+  gap: 8px;
+}
+
+.board-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 1.45rem;
+  font-weight: 900;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.board-cell.marked {
+  border-color: rgba(0, 143, 138, 0.62);
+  background: rgba(0, 143, 138, 0.13);
+  color: #006b67;
+}
+
+.board-cell.complete {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #2e2500;
+  transform: scale(1.02);
+}
+
+.board-cell.just-hit::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 3px solid rgba(220, 63, 69, 0.8);
+  border-radius: 6px;
+  animation: hitPulse 850ms ease-out;
+  pointer-events: none;
+}
+
+.line-meter {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.line-meter span {
+  height: 10px;
+  border-radius: 999px;
+  background: #dfe6f1;
+}
+
+.line-meter span.filled {
+  background: var(--green);
+}
+
+.called-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 7px;
+  min-height: 92px;
+  max-height: 196px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.called-list:empty::before {
+  content: "尚未開號";
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.called-number {
+  min-height: 34px;
+  border-radius: 8px;
+  background: #eef3f9;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.called-number.latest {
+  background: var(--red);
+  color: #fff;
+}
+
+.player-list {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+}
+
+.player-list:empty::before {
+  content: "尚未加入房間";
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.player-main {
+  min-width: 0;
+}
+
+.player-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.player-tag {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #eef3f9;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0 8px;
+}
+
+.player-tag.host {
+  background: rgba(243, 183, 53, 0.25);
+  color: #745100;
+}
+
+.player-tag.offline {
+  background: #edf0f5;
+  color: #8a93a5;
+}
+
+.player-lines {
+  min-width: 56px;
+  text-align: right;
+  color: var(--teal);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+@keyframes hitPulse {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 920px) {
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .game-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "room"
+      "wheel"
+      "board"
+      "history"
+      "players";
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    width: min(100% - 20px, 1180px);
+    padding: 16px 0;
+  }
+
+  h1 {
+    font-size: 1.85rem;
+  }
+
+  .score-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wheel-panel,
+  .board-panel,
+  .history-panel {
+    padding: 12px;
+  }
+
+  .result-badge {
+    width: 92px;
+    height: 92px;
+    border-width: 6px;
+  }
+
+  .result-badge strong {
+    font-size: 1.7rem;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .room-form,
+  .room-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .board {
+    gap: 6px;
+  }
+
+  .board-cell {
+    font-size: 1.15rem;
+  }
+}
