@@ -589,9 +589,11 @@ async function requestRoomSpin() {
     }
 
     const targetNumber = chooseNextNumberFrom(called);
+    const spinId = Number(room.lastSpinId || room.spin?.id || 0) + 1;
     room.status = "spinning";
+    room.lastSpinId = spinId;
     room.spin = {
-      id: Number(room.spin?.id || 0) + 1,
+      id: spinId,
       targetNumber,
       startedBy: currentUser.uid,
       startedAt: Date.now(),
@@ -607,7 +609,7 @@ async function requestRoomSpin() {
 }
 
 async function finishRoomSpin(spin) {
-  if (!roomId || !currentUser || !isRoomHost()) {
+  if (!roomId || !currentUser) {
     return;
   }
 
@@ -716,6 +718,7 @@ async function createRoom() {
       status: "waiting",
       currentNumber: null,
       calledNumbers: [],
+      lastSpinId: 0,
       spin: null,
       winner: null,
       createdAt: Date.now(),
@@ -858,17 +861,18 @@ function handleRemoteSpin(spin) {
   renderGame();
 
   if (lastAnimatedSpinId === spin.id) {
+    const startedAt = Number(spin.startedAt || 0);
+    const duration = Number(spin.duration) || SPIN_DURATION;
+    if (Date.now() - startedAt > duration + 1000) {
+      finishRoomSpin(spin).catch((error) => setRoomMessage(`開號失敗：${error.message}`));
+    }
     return;
   }
 
   lastAnimatedSpinId = spin.id;
   const targetNumber = Number(spin.targetNumber);
   animateWheelToNumber(targetNumber, () => {
-    if (isRoomHost()) {
-      finishRoomSpin(spin).catch((error) => setRoomMessage(`開號失敗：${error.message}`));
-    } else {
-      renderGame();
-    }
+    finishRoomSpin(spin).catch((error) => setRoomMessage(`開號失敗：${error.message}`));
   }, Number(spin.duration) || SPIN_DURATION);
 }
 
