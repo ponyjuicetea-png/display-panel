@@ -543,6 +543,19 @@ function handleRoomSoundEvent(event) {
   if (event.type === "reset") {
     audio.playResetLaugh();
   }
+
+  if (event.type === "spin") {
+    audio.playSpin({
+      danger: Boolean(event.danger),
+      duration: Number(event.duration) || SPIN_DURATION,
+    });
+  }
+
+  if (event.type === "reveal") {
+    audio.stopSpin();
+    const number = Number(event.number);
+    audio.playReveal(cardNumbers.includes(number));
+  }
 }
 
 function renderStatusText() {
@@ -699,12 +712,15 @@ function easeOutCubic(progress) {
   return 1 - Math.pow(1 - progress, 3);
 }
 
-function animateWheelToNumber(nextNumber, onComplete, duration = SPIN_DURATION) {
+function animateWheelToNumber(nextNumber, onComplete, duration = SPIN_DURATION, options = {}) {
+  const { playAudio = true } = options;
   isSpinning = true;
   lastHitNumber = null;
   statusTextElement.textContent = "旋轉中";
   statusTextElement.classList.remove("win");
-  audio.playSpin({ danger: isAnyoneCloseToWin(), duration });
+  if (playAudio) {
+    audio.playSpin({ danger: isAnyoneCloseToWin(), duration });
+  }
   renderScore();
   renderBoard();
 
@@ -724,8 +740,10 @@ function animateWheelToNumber(nextNumber, onComplete, duration = SPIN_DURATION) 
 
     wheelRotation %= TAU;
     isSpinning = false;
-    audio.stopSpin();
-    audio.playReveal(cardNumbers.includes(nextNumber));
+    if (playAudio) {
+      audio.stopSpin();
+      audio.playReveal(cardNumbers.includes(nextNumber));
+    }
     onComplete();
   }
 
@@ -767,14 +785,25 @@ async function requestRoomSpin() {
 
     const targetNumber = chooseNextNumberFrom(called);
     const spinId = Number(room.lastSpinId || room.spin?.id || 0) + 1;
+    const startedAt = Date.now();
     room.status = "spinning";
     room.lastSpinId = spinId;
     room.spin = {
       id: spinId,
       targetNumber,
       startedBy: currentUser.uid,
-      startedAt: Date.now(),
+      startedAt,
       duration: SPIN_DURATION,
+    };
+    room.soundEvent = {
+      id: `spin-${spinId}-${startedAt}`,
+      type: "spin",
+      by: currentUser.uid,
+      spinId,
+      targetNumber,
+      danger: isAnyoneCloseToWin(),
+      duration: SPIN_DURATION,
+      createdAt: startedAt,
     };
     room.updatedAt = Date.now();
     return room;
@@ -805,6 +834,14 @@ async function finishRoomSpin(spin) {
     room.currentNumber = targetNumber;
     room.status = "playing";
     room.spin = null;
+    room.soundEvent = {
+      id: `reveal-${spin.id}-${Date.now()}`,
+      type: "reveal",
+      by: currentUser.uid,
+      spinId: spin.id,
+      number: targetNumber,
+      createdAt: Date.now(),
+    };
     room.updatedAt = Date.now();
     return room;
   });
@@ -988,6 +1025,7 @@ function connectToRoom(code) {
   lastAnimatedSpinId = null;
   lastCurrentNumber = null;
   lastSyncedLineCount = null;
+  lastRoomSoundEventId = null;
   unsubscribeRoom = onValue(roomNodeRef(code), handleRoomSnapshot, (error) => {
     setRoomMessage(`同步失敗：${error.message}`);
   });
@@ -1011,7 +1049,6 @@ function handleRoomSnapshot(snapshot) {
 
   const previousCurrent = lastCurrentNumber;
   roomState = snapshot.val();
-  handleRoomSoundEvent(roomState.soundEvent);
   const player = roomState.players?.[currentUser?.uid];
   const roomCard = normalizeCard(player?.cardNumbers);
 
@@ -1021,6 +1058,7 @@ function handleRoomSnapshot(snapshot) {
 
   calledNumbers = normalizeNumbers(roomState.calledNumbers);
   calledSet = new Set(calledNumbers);
+  handleRoomSoundEvent(roomState.soundEvent);
   lastCurrentNumber = Number(roomState.currentNumber) || null;
   currentNumberElement.textContent = lastCurrentNumber || "--";
 
@@ -1057,7 +1095,7 @@ function handleRemoteSpin(spin) {
   const targetNumber = Number(spin.targetNumber);
   animateWheelToNumber(targetNumber, () => {
     finishRoomSpin(spin).catch((error) => setRoomMessage(`開號失敗：${error.message}`));
-  }, Number(spin.duration) || SPIN_DURATION);
+  }, Number(spin.duration) || SPIN_DURATION, { playAudio: false });
 }
 
 async function syncPlayerProgress() {
@@ -1264,6 +1302,7 @@ soundButton.addEventListener("click", () => {
   if (audio.isSupported() && !audio.isUnlocked()) {
     audio.setEnabled(true);
     primeAudio();
+    window.setTimeout(() => audio.playReveal(true), 120);
     return;
   }
   audio.toggle();
@@ -1272,6 +1311,7 @@ soundButton.addEventListener("click", () => {
 soundPrompt.addEventListener("click", () => {
   audio.setEnabled(true);
   primeAudio();
+  window.setTimeout(() => audio.playReveal(true), 120);
 });
 awardCloseButton.addEventListener("click", dismissAward);
 awardOverlay.addEventListener("click", (event) => {
