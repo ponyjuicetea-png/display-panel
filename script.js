@@ -14,7 +14,22 @@ import {
   set,
   update,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-database.js";
-import { createAudioManager } from "./audio.js";
+
+function createSilentAudioManager() {
+  return {
+    isEnabled: () => false,
+    isSupported: () => false,
+    unlock: () => Promise.resolve(),
+    toggle: () => {},
+    setEnabled: () => {},
+    playSpin: () => {},
+    stopSpin: () => {},
+    playReveal: () => {},
+    playShuffle: () => {},
+    playResetLaugh: () => {},
+    playVictory: () => {},
+  };
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDXJgtdIxVTghU_o-gQ_B3PVfyudMxSn9I",
@@ -67,7 +82,7 @@ const ctx = wheelCanvas.getContext("2d");
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
-const audio = createAudioManager();
+let audio = createSilentAudioManager();
 const palette = ["#dc3f45", "#f3b735", "#008f8a", "#7257bd", "#5e9f45"];
 
 let cardNumbers = [];
@@ -1104,6 +1119,18 @@ function dismissAward() {
   awardOverlay.hidden = true;
 }
 
+function loadAudioManager() {
+  import("./audio.js")
+    .then((module) => {
+      audio.stopSpin();
+      audio = module.createAudioManager();
+      renderSoundButton();
+    })
+    .catch(() => {
+      renderSoundButton();
+    });
+}
+
 document.addEventListener("pointerdown", primeAudio, { capture: true });
 document.addEventListener("keydown", primeAudio, { capture: true });
 roomCodeInput.addEventListener("input", () => {
@@ -1149,4 +1176,5 @@ createCard();
 resetDraws();
 resizeWheelCanvas();
 renderGame();
+loadAudioManager();
 initializeAuth();
