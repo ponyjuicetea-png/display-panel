@@ -805,6 +805,323 @@ h2 {
   font-weight: 900;
 }
 
+.line-party-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 24% 22%, rgba(255, 200, 61, 0.36), transparent 20rem),
+    radial-gradient(circle at 72% 28%, rgba(69, 183, 255, 0.3), transparent 18rem),
+    rgba(29, 39, 69, 0.18);
+}
+
+.line-party-overlay[hidden] {
+  display: none;
+}
+
+.line-party-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(620px, calc(100vw - 48px));
+  min-height: 430px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  overflow: hidden;
+  padding: 22px;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background:
+    linear-gradient(#fffdf7, #fffdf7) padding-box,
+    linear-gradient(135deg, var(--red), var(--gold), var(--teal), var(--sky), var(--pink)) border-box;
+  box-shadow:
+    0 30px 90px rgba(98, 58, 24, 0.25),
+    inset 0 0 0 10px rgba(255, 200, 61, 0.12);
+  text-align: center;
+  transform: translate(-50%, -50%) scale(0.82);
+  animation: linePartyPop 3200ms ease forwards;
+}
+
+.line-party-panel::before,
+.line-party-panel::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 8deg, rgba(255, 79, 104, 0.22) 0 10deg, rgba(255, 200, 61, 0.22) 10deg 20deg, rgba(0, 169, 165, 0.2) 20deg 30deg);
+  opacity: 0.72;
+  animation: carnivalSpin 3600ms linear infinite;
+}
+
+.line-party-panel::before {
+  top: -92px;
+  left: -74px;
+}
+
+.line-party-panel::after {
+  right: -82px;
+  bottom: -96px;
+  animation-direction: reverse;
+}
+
+.line-party-stage {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  height: 238px;
+  margin-bottom: 10px;
+}
+
+.party-person {
+  --flip: 1;
+  position: absolute;
+  bottom: 5px;
+  width: 106px;
+  height: 170px;
+  transform: scaleX(var(--flip));
+  animation: personCheer 900ms ease-in-out infinite;
+}
+
+.person-left {
+  left: 34px;
+}
+
+.person-right {
+  --flip: -1;
+  right: 34px;
+  animation-delay: -260ms;
+}
+
+.person-head {
+  position: absolute;
+  top: 0;
+  left: 31px;
+  width: 46px;
+  height: 46px;
+  border: 4px solid #1d2745;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 38%, #fff 0 4px, transparent 5px),
+    linear-gradient(135deg, #ffd7a8, #ffb982);
+  box-shadow: inset 0 -7px 0 rgba(98, 58, 24, 0.1);
+}
+
+.person-body {
+  position: absolute;
+  top: 52px;
+  left: 23px;
+  width: 62px;
+  height: 82px;
+  border: 4px solid #1d2745;
+  border-radius: 28px 28px 18px 18px;
+  background: linear-gradient(135deg, var(--teal), var(--sky));
+  box-shadow: inset 0 -12px 0 rgba(29, 39, 69, 0.12);
+}
+
+.person-right .person-body {
+  background: linear-gradient(135deg, var(--red), var(--pink));
+}
+
+.person-arm {
+  position: absolute;
+  top: 70px;
+  right: 6px;
+  width: 55px;
+  height: 17px;
+  border: 4px solid #1d2745;
+  border-left: 0;
+  border-radius: 0 18px 18px 0;
+  background: #ffd0a1;
+  transform: rotate(-25deg);
+  transform-origin: 0 50%;
+  animation: armPour 820ms ease-in-out infinite;
+}
+
+.party-cup {
+  position: absolute;
+  top: 55px;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  border: 4px solid #1d2745;
+  border-top-width: 7px;
+  border-radius: 5px 5px 12px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(69, 183, 255, 0.56)),
+    var(--sky);
+  transform: rotate(-34deg);
+  animation: cupPour 820ms ease-in-out infinite;
+}
+
+.water-splash {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  z-index: 2;
+  width: 180px;
+  height: 86px;
+  transform: translateX(-50%);
+}
+
+.water-splash span {
+  --x: 0px;
+  --y: -46px;
+  position: absolute;
+  left: 50%;
+  top: 42px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #b9f3ff, var(--sky));
+  box-shadow: 0 0 18px rgba(69, 183, 255, 0.62);
+  opacity: 0;
+  animation: waterSplash 1050ms ease-out infinite;
+}
+
+.water-splash span:nth-child(1) {
+  --x: -74px;
+  --y: -40px;
+}
+
+.water-splash span:nth-child(2) {
+  --x: -52px;
+  --y: -68px;
+  animation-delay: -90ms;
+}
+
+.water-splash span:nth-child(3) {
+  --x: -26px;
+  --y: -58px;
+  animation-delay: -170ms;
+}
+
+.water-splash span:nth-child(4) {
+  --x: 0;
+  --y: -76px;
+  animation-delay: -240ms;
+}
+
+.water-splash span:nth-child(5) {
+  --x: 28px;
+  --y: -56px;
+  animation-delay: -130ms;
+}
+
+.water-splash span:nth-child(6) {
+  --x: 52px;
+  --y: -70px;
+  animation-delay: -260ms;
+}
+
+.water-splash span:nth-child(7) {
+  --x: 76px;
+  --y: -42px;
+  animation-delay: -210ms;
+}
+
+.water-splash span:nth-child(8) {
+  --x: 12px;
+  --y: -34px;
+  animation-delay: -340ms;
+}
+
+.line-firework {
+  position: absolute;
+  z-index: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  color: var(--red);
+  background: currentColor;
+  opacity: 0;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.72));
+  box-shadow:
+    0 -64px 0 currentColor,
+    45px -45px 0 var(--gold),
+    64px 0 0 var(--teal),
+    45px 45px 0 var(--sky),
+    0 64px 0 var(--pink),
+    -45px 45px 0 var(--orange),
+    -64px 0 0 var(--violet),
+    -45px -45px 0 var(--green);
+  animation: fireworkBurst 1050ms ease-out infinite;
+}
+
+.firework-one {
+  top: 54px;
+  left: 88px;
+}
+
+.firework-two {
+  top: 45px;
+  right: 82px;
+  animation-delay: -360ms;
+}
+
+.firework-three {
+  top: 18px;
+  left: 50%;
+  color: var(--gold);
+  animation-delay: -670ms;
+}
+
+.firework-four {
+  top: 118px;
+  left: 128px;
+  color: var(--sky);
+  animation-delay: -180ms;
+}
+
+.firework-five {
+  top: 124px;
+  right: 132px;
+  color: var(--pink);
+  animation-delay: -520ms;
+}
+
+.firework-six {
+  top: 78px;
+  left: 50%;
+  color: var(--teal);
+  animation-delay: -870ms;
+}
+
+.line-party-kicker {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: var(--red);
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.line-party-panel h2 {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 2.2rem;
+  text-shadow:
+    3px 3px 0 rgba(255, 200, 61, 0.58),
+    6px 6px 0 rgba(0, 169, 165, 0.16);
+}
+
+#linePartyDetail {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
 .award-overlay {
   position: fixed;
   inset: 0;
@@ -922,6 +1239,90 @@ h2 {
   }
 }
 
+@keyframes linePartyPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 24px)) scale(0.82);
+  }
+  10%,
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 18px)) scale(0.96);
+  }
+}
+
+@keyframes carnivalSpin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes personCheer {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(var(--flip));
+  }
+  50% {
+    transform: translateY(-8px) scaleX(var(--flip));
+  }
+}
+
+@keyframes armPour {
+  0%,
+  100% {
+    transform: rotate(-22deg);
+  }
+  50% {
+    transform: rotate(-42deg) translateX(4px);
+  }
+}
+
+@keyframes cupPour {
+  0%,
+  100% {
+    transform: rotate(-24deg);
+  }
+  50% {
+    transform: rotate(-58deg) translateX(8px);
+  }
+}
+
+@keyframes waterSplash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.46);
+  }
+  20% {
+    opacity: 1;
+  }
+  76% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--x)), var(--y)) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), calc(var(--y) + 28px)) scale(0.42);
+  }
+}
+
+@keyframes fireworkBurst {
+  0% {
+    opacity: 0;
+    transform: scale(0.18) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28) rotate(45deg);
+  }
+}
+
 @media (max-width: 920px) {
   .party-bunting {
     gap: 8px;
@@ -1021,5 +1422,40 @@ h2 {
 
   .board-cell {
     font-size: 1.15rem;
+  }
+
+  .line-party-overlay {
+    padding: 12px;
+    align-items: center;
+    justify-items: center;
+  }
+
+  .line-party-panel {
+    width: calc(100vw - 48px);
+    max-width: 330px;
+    min-height: 370px;
+    justify-self: center;
+    padding: 18px 12px;
+  }
+
+  .line-party-stage {
+    width: 300px;
+    max-width: 100%;
+    height: 194px;
+    margin-bottom: 2px;
+    transform: scale(0.8);
+    transform-origin: center bottom;
+  }
+
+  .person-left {
+    left: 0;
+  }
+
+  .person-right {
+    right: 0;
+  }
+
+  .line-party-panel h2 {
+    font-size: 1.68rem;
   }
 }

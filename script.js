@@ -24,6 +24,7 @@ function createSilentAudioManager() {
     playReveal: () => {},
     playShuffle: () => {},
     playResetLaugh: () => {},
+    playLineParty: () => {},
     playVictory: () => {},
   };
 }
@@ -75,6 +76,9 @@ const awardOverlay = document.querySelector("#awardOverlay");
 const awardCloseButton = document.querySelector("#awardCloseButton");
 const awardWinnerName = document.querySelector("#awardWinnerName");
 const awardWinnerDetail = document.querySelector("#awardWinnerDetail");
+const linePartyOverlay = document.querySelector("#linePartyOverlay");
+const linePartyTitle = document.querySelector("#linePartyTitle");
+const linePartyDetail = document.querySelector("#linePartyDetail");
 const ctx = wheelCanvas.getContext("2d");
 
 let app = null;
@@ -99,9 +103,11 @@ let unsubscribeRoom = null;
 let lastCurrentNumber = null;
 let lastAnimatedSpinId = null;
 let lastSyncedLineCount = null;
+let lastObservedLineCount = 0;
 let lastCelebratedWinnerKey = null;
 let dismissedWinnerKey = null;
 let lastRoomSoundEventId = null;
+let linePartyTimer = null;
 let firebaseReady = false;
 let authReady = false;
 
@@ -146,9 +152,11 @@ function resetDraws() {
   lastHitNumber = null;
   lastCurrentNumber = null;
   lastCelebratedWinnerKey = null;
+  lastObservedLineCount = 0;
   dismissedWinnerKey = null;
   gameOver = false;
   wheelRotation = 0;
+  hideLineParty();
   awardOverlay.hidden = true;
   currentNumberElement.textContent = "--";
   statusTextElement.textContent = roomId ? "房間已連線" : "單機模式";
@@ -483,6 +491,57 @@ function getWinnerKey(winner) {
   return `${winner.uid || winner.name}-${winner.wonAt || ""}`;
 }
 
+function hideLineParty() {
+  if (linePartyTimer) {
+    window.clearTimeout(linePartyTimer);
+    linePartyTimer = null;
+  }
+
+  if (linePartyOverlay) {
+    linePartyOverlay.hidden = true;
+  }
+}
+
+function showLineParty(lineCount, playerName = getPlayerName(), shouldPlayAudio = true) {
+  if (!linePartyOverlay || !linePartyTitle || !linePartyDetail) {
+    return;
+  }
+
+  const safeLineCount = Math.max(1, Math.min(REQUIRED_LINES, Number(lineCount) || 1));
+  const safeName = String(playerName || "玩家").trim().slice(0, 12) || "玩家";
+  linePartyTitle.textContent = `完成 ${safeLineCount} 條線！`;
+  linePartyDetail.textContent = `${safeName} 杯水慶祝，煙火全開`;
+
+  if (linePartyTimer) {
+    window.clearTimeout(linePartyTimer);
+  }
+
+  linePartyOverlay.hidden = true;
+  void linePartyOverlay.offsetWidth;
+  linePartyOverlay.hidden = false;
+
+  if (shouldPlayAudio && audio.playLineParty) {
+    audio.playLineParty();
+  }
+
+  linePartyTimer = window.setTimeout(hideLineParty, 3200);
+}
+
+function celebrateLineProgress() {
+  const lineCount = completedLineKeys.size;
+
+  if (lastObservedLineCount === null) {
+    lastObservedLineCount = lineCount;
+    return;
+  }
+
+  if (lineCount > lastObservedLineCount && lineCount >= 1) {
+    showLineParty(lineCount, getPlayerName(), lineCount < REQUIRED_LINES);
+  }
+
+  lastObservedLineCount = lineCount;
+}
+
 function renderAward() {
   const winner = getCurrentWinner();
   if (!winner) {
@@ -505,22 +564,23 @@ function renderAward() {
   awardOverlay.hidden = dismissedWinnerKey === key;
 }
 
-function createRoomSoundEvent(type) {
+function createRoomSoundEvent(type, extra = {}) {
   return {
     id: `${Date.now()}-${currentUser?.uid || "local"}-${Math.random().toString(36).slice(2, 8)}`,
     type,
     by: currentUser?.uid || null,
     createdAt: Date.now(),
+    ...extra,
   };
 }
 
-async function emitRoomSoundEvent(type) {
+async function emitRoomSoundEvent(type, extra = {}) {
   if (!roomId || !currentUser || !firebaseReady) {
     return;
   }
 
   await update(roomNodeRef(), {
-    soundEvent: createRoomSoundEvent(type),
+    soundEvent: createRoomSoundEvent(type, extra),
     updatedAt: Date.now(),
   });
 }
@@ -555,6 +615,10 @@ function handleRoomSoundEvent(event) {
     audio.stopSpin();
     const number = Number(event.number);
     audio.playReveal(cardNumbers.includes(number));
+  }
+
+  if (event.type === "line-party" && event.by !== currentUser?.uid) {
+    showLineParty(Number(event.lineCount) || 1, event.playerName || "玩家", true);
   }
 }
 
@@ -601,6 +665,7 @@ function renderScore() {
 
 function renderGame() {
   calculateLines();
+  celebrateLineProgress();
   gameOver = Boolean(roomState?.winner) || (!isRoomMode() && completedLineKeys.size >= REQUIRED_LINES);
 
   if (!isRoomMode() && completedLineKeys.size >= REQUIRED_LINES) {
@@ -1025,7 +1090,9 @@ function connectToRoom(code) {
   lastAnimatedSpinId = null;
   lastCurrentNumber = null;
   lastSyncedLineCount = null;
+  lastObservedLineCount = null;
   lastRoomSoundEventId = null;
+  hideLineParty();
   unsubscribeRoom = onValue(roomNodeRef(code), handleRoomSnapshot, (error) => {
     setRoomMessage(`同步失敗：${error.message}`);
   });
@@ -1105,13 +1172,22 @@ async function syncPlayerProgress() {
 
   const lineCount = completedLineKeys.size;
   const currentPlayer = roomState.players[currentUser.uid];
+  const previousLineCount = Number(currentPlayer.lineCount || 0);
+  const gainedLine = lineCount > previousLineCount;
 
-  if (lineCount !== currentPlayer.lineCount && lineCount !== lastSyncedLineCount) {
+  if (lineCount !== previousLineCount && lineCount !== lastSyncedLineCount) {
     lastSyncedLineCount = lineCount;
     await update(playerNodeRef(), {
       lineCount,
       updatedAt: Date.now(),
     });
+
+    if (gainedLine && lineCount >= 1 && lineCount < REQUIRED_LINES) {
+      await emitRoomSoundEvent("line-party", {
+        lineCount,
+        playerName: getPlayerName(),
+      });
+    }
   }
 
   if (!roomState.winner && lineCount >= REQUIRED_LINES) {
