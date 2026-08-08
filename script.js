@@ -14,6 +14,7 @@ import {
   set,
   update,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-database.js";
+import { createAudioManager } from "./audio.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDXJgtdIxVTghU_o-gQ_B3PVfyudMxSn9I",
@@ -38,6 +39,8 @@ const boardElement = document.querySelector("#board");
 const spinButton = document.querySelector("#spinButton");
 const newCardButton = document.querySelector("#newCardButton");
 const resetButton = document.querySelector("#resetButton");
+const soundButton = document.querySelector("#soundButton");
+const soundButtonLabel = document.querySelector("#soundButtonLabel");
 const createRoomButton = document.querySelector("#createRoomButton");
 const joinRoomButton = document.querySelector("#joinRoomButton");
 const copyRoomButton = document.querySelector("#copyRoomButton");
@@ -55,11 +58,16 @@ const calledCountElement = document.querySelector("#calledCount");
 const calledListElement = document.querySelector("#calledList");
 const lineMeterElement = document.querySelector("#lineMeter");
 const statusTextElement = document.querySelector("#statusText");
+const awardOverlay = document.querySelector("#awardOverlay");
+const awardCloseButton = document.querySelector("#awardCloseButton");
+const awardWinnerName = document.querySelector("#awardWinnerName");
+const awardWinnerDetail = document.querySelector("#awardWinnerDetail");
 const ctx = wheelCanvas.getContext("2d");
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
+const audio = createAudioManager();
 const palette = ["#dc3f45", "#f3b735", "#008f8a", "#7257bd", "#5e9f45"];
 
 let cardNumbers = [];
@@ -78,6 +86,8 @@ let unsubscribeRoom = null;
 let lastCurrentNumber = null;
 let lastAnimatedSpinId = null;
 let lastSyncedLineCount = null;
+let lastCelebratedWinnerKey = null;
+let dismissedWinnerKey = null;
 let authReady = false;
 
 function range(count) {
@@ -113,14 +123,18 @@ function createCard() {
 }
 
 function resetDraws() {
+  audio.stopSpin();
   calledNumbers = [];
   calledSet = new Set();
   completedLineKeys = new Set();
   winningCellIndexes = new Set();
   lastHitNumber = null;
   lastCurrentNumber = null;
+  lastCelebratedWinnerKey = null;
+  dismissedWinnerKey = null;
   gameOver = false;
   wheelRotation = 0;
+  awardOverlay.hidden = true;
   currentNumberElement.textContent = "--";
   statusTextElement.textContent = roomId ? "房間已連線" : "單機模式";
   statusTextElement.classList.remove("win");
@@ -181,6 +195,42 @@ function calculateLines() {
 
 function countCompletedLines(card, called) {
   return getLineResult(normalizeCard(card), normalizeNumbers(called)).lineKeys.size;
+}
+
+function getPotentialWinningNumbers(card, called) {
+  const cleanCard = normalizeCard(card);
+  const cleanCalled = normalizeNumbers(called);
+  const calledNumberSet = new Set(cleanCalled);
+
+  if (!cleanCard.length || countCompletedLines(cleanCard, cleanCalled) >= REQUIRED_LINES) {
+    return [];
+  }
+
+  return cleanCard.filter((number) => {
+    if (calledNumberSet.has(number)) {
+      return false;
+    }
+    return countCompletedLines(cleanCard, [...cleanCalled, number]) >= REQUIRED_LINES;
+  });
+}
+
+function getNearWinPlayers() {
+  if (isRoomMode() && roomState?.players) {
+    return Object.entries(roomState.players)
+      .map(([uid, player]) => ({
+        uid,
+        name: player?.name || `玩家${uid.slice(0, 4).toUpperCase()}`,
+        numbers: getPotentialWinningNumbers(player?.cardNumbers, calledNumbers),
+      }))
+      .filter((player) => player.numbers.length > 0);
+  }
+
+  const numbers = getPotentialWinningNumbers(cardNumbers, calledNumbers);
+  return numbers.length ? [{ uid: "local", name: getPlayerName(), numbers }] : [];
+}
+
+function isAnyoneCloseToWin() {
+  return getNearWinPlayers().length > 0;
 }
 
 function getPlayerName() {
@@ -330,6 +380,9 @@ function renderPlayers() {
   players.forEach((player) => {
     const row = document.createElement("div");
     row.className = "player-row";
+    if (roomState?.winner?.uid === player.uid) {
+      row.classList.add("winner");
+    }
 
     const main = document.createElement("div");
     main.className = "player-main";
@@ -370,6 +423,61 @@ function renderRoomControls() {
   copyRoomButton.disabled = !roomId;
   createRoomButton.disabled = !authReady || isSpinning;
   joinRoomButton.disabled = !authReady || isSpinning;
+  renderSoundButton();
+}
+
+function renderSoundButton() {
+  const enabled = audio.isEnabled();
+  soundButton.classList.toggle("muted", !enabled);
+  soundButtonLabel.textContent = enabled ? "音效開" : "音效關";
+  soundButton.setAttribute("aria-pressed", enabled ? "true" : "false");
+  soundButton.disabled = !audio.isSupported();
+}
+
+function getCurrentWinner() {
+  if (roomState?.winner) {
+    return roomState.winner;
+  }
+
+  if (!isRoomMode() && completedLineKeys.size >= REQUIRED_LINES) {
+    return {
+      uid: "local",
+      name: getPlayerName(),
+      lineCount: completedLineKeys.size,
+      wonAt: "local",
+    };
+  }
+
+  return null;
+}
+
+function getWinnerKey(winner) {
+  if (!winner) {
+    return "";
+  }
+  return `${winner.uid || winner.name}-${winner.wonAt || ""}`;
+}
+
+function renderAward() {
+  const winner = getCurrentWinner();
+  if (!winner) {
+    awardOverlay.hidden = true;
+    lastCelebratedWinnerKey = null;
+    dismissedWinnerKey = null;
+    return;
+  }
+
+  const key = getWinnerKey(winner);
+  awardWinnerName.textContent = winner.uid === currentUser?.uid ? `${winner.name || "你"}（你）` : winner.name || "玩家";
+  awardWinnerDetail.textContent = `完成 ${Math.min(Number(winner.lineCount || REQUIRED_LINES), REQUIRED_LINES)} 條線`;
+
+  if (lastCelebratedWinnerKey !== key) {
+    lastCelebratedWinnerKey = key;
+    dismissedWinnerKey = null;
+    audio.playVictory();
+  }
+
+  awardOverlay.hidden = dismissedWinnerKey === key;
 }
 
 function renderStatusText() {
@@ -428,6 +536,7 @@ function renderGame() {
   renderRoomControls();
   renderStatusText();
   renderScore();
+  renderAward();
   syncPlayerProgress().catch((error) => setRoomMessage(`進度同步失敗：${error.message}`));
 }
 
@@ -530,6 +639,7 @@ function animateWheelToNumber(nextNumber, onComplete, duration = SPIN_DURATION) 
   lastHitNumber = null;
   statusTextElement.textContent = "旋轉中";
   statusTextElement.classList.remove("win");
+  audio.playSpin({ danger: isAnyoneCloseToWin(), duration });
   renderScore();
   renderBoard();
 
@@ -549,6 +659,8 @@ function animateWheelToNumber(nextNumber, onComplete, duration = SPIN_DURATION) 
 
     wheelRotation %= TAU;
     isSpinning = false;
+    audio.stopSpin();
+    audio.playReveal(cardNumbers.includes(nextNumber));
     onComplete();
   }
 
@@ -655,12 +767,14 @@ async function startNewCard() {
       lineCount: 0,
       updatedAt: Date.now(),
     });
+    audio.playShuffle();
     setRoomMessage("已更換你的數字卡");
     return;
   }
 
   createCard();
   resetDraws();
+  audio.playShuffle();
   resizeWheelCanvas();
   renderGame();
 }
@@ -692,11 +806,13 @@ async function restartSameCard() {
       return room;
     });
 
+    audio.playResetLaugh();
     setRoomMessage("房間已重開");
     return;
   }
 
   resetDraws();
+  audio.playResetLaugh();
   resizeWheelCanvas();
   renderGame();
 }
@@ -979,6 +1095,17 @@ function initializeAuth() {
   });
 }
 
+function primeAudio() {
+  audio.unlock().then(renderSoundButton);
+}
+
+function dismissAward() {
+  dismissedWinnerKey = getWinnerKey(getCurrentWinner());
+  awardOverlay.hidden = true;
+}
+
+document.addEventListener("pointerdown", primeAudio, { capture: true });
+document.addEventListener("keydown", primeAudio, { capture: true });
 roomCodeInput.addEventListener("input", () => {
   roomCodeInput.value = sanitizeRoomCode(roomCodeInput.value);
 });
@@ -1005,6 +1132,16 @@ joinRoomButton.addEventListener("click", () => {
   joinRoom().catch((error) => setRoomMessage(`加入失敗：${error.message}`));
 });
 copyRoomButton.addEventListener("click", copyRoomLink);
+soundButton.addEventListener("click", () => {
+  audio.toggle();
+  renderSoundButton();
+});
+awardCloseButton.addEventListener("click", dismissAward);
+awardOverlay.addEventListener("click", (event) => {
+  if (event.target === awardOverlay) {
+    dismissAward();
+  }
+});
 window.addEventListener("resize", resizeWheelCanvas);
 
 initializePlayerName();

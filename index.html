@@ -96,6 +96,10 @@
               <span aria-hidden="true">↺</span>
               <span>重開</span>
             </button>
+            <button id="soundButton" type="button" title="音效開關">
+              <span aria-hidden="true">♪</span>
+              <span id="soundButtonLabel">音效開</span>
+            </button>
           </div>
         </section>
 
@@ -130,6 +134,17 @@
           <div class="player-list" id="playerList" aria-live="polite"></div>
         </aside>
       </main>
+    </div>
+
+    <div class="award-overlay" id="awardOverlay" hidden>
+      <div class="award-panel" role="dialog" aria-modal="true" aria-labelledby="awardTitle">
+        <button class="award-close" id="awardCloseButton" type="button" aria-label="關閉">×</button>
+        <div class="award-medal" aria-hidden="true">★</div>
+        <p class="award-kicker">WINNER</p>
+        <h2 id="awardTitle">勝利者</h2>
+        <strong id="awardWinnerName">玩家</strong>
+        <span id="awardWinnerDetail">完成 5 條線</span>
+      </div>
     </div>
 
     <script type="module" src="script.js"></script>
