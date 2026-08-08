@@ -18,6 +18,7 @@ function createSilentAudioManager() {
     unlock: () => Promise.resolve(),
     toggle: () => {},
     setEnabled: () => {},
+    isUnlocked: () => true,
     playSpin: () => {},
     stopSpin: () => {},
     playReveal: () => {},
@@ -52,6 +53,7 @@ const newCardButton = document.querySelector("#newCardButton");
 const resetButton = document.querySelector("#resetButton");
 const soundButton = document.querySelector("#soundButton");
 const soundButtonLabel = document.querySelector("#soundButtonLabel");
+const soundPrompt = document.querySelector("#soundPrompt");
 const createRoomButton = document.querySelector("#createRoomButton");
 const joinRoomButton = document.querySelector("#joinRoomButton");
 const copyRoomButton = document.querySelector("#copyRoomButton");
@@ -99,6 +101,7 @@ let lastAnimatedSpinId = null;
 let lastSyncedLineCount = null;
 let lastCelebratedWinnerKey = null;
 let dismissedWinnerKey = null;
+let lastRoomSoundEventId = null;
 let firebaseReady = false;
 let authReady = false;
 
@@ -448,10 +451,12 @@ function renderRoomControls() {
 
 function renderSoundButton() {
   const enabled = audio.isEnabled();
+  const needsUnlock = enabled && audio.isSupported() && !audio.isUnlocked();
   soundButton.classList.toggle("muted", !enabled);
-  soundButtonLabel.textContent = enabled ? "音效開" : "音效關";
+  soundButtonLabel.textContent = needsUnlock ? "點我開聲" : (enabled ? "音效開" : "音效關");
   soundButton.setAttribute("aria-pressed", enabled ? "true" : "false");
   soundButton.disabled = !audio.isSupported();
+  soundPrompt.hidden = !needsUnlock;
 }
 
 function getCurrentWinner() {
@@ -491,13 +496,53 @@ function renderAward() {
   awardWinnerName.textContent = winner.uid === currentUser?.uid ? `${winner.name || "你"}（你）` : winner.name || "玩家";
   awardWinnerDetail.textContent = `完成 ${Math.min(Number(winner.lineCount || REQUIRED_LINES), REQUIRED_LINES)} 條線`;
 
-  if (lastCelebratedWinnerKey !== key) {
+  if (lastCelebratedWinnerKey !== key && audio.isUnlocked()) {
     lastCelebratedWinnerKey = key;
     dismissedWinnerKey = null;
     audio.playVictory();
   }
 
   awardOverlay.hidden = dismissedWinnerKey === key;
+}
+
+function createRoomSoundEvent(type) {
+  return {
+    id: `${Date.now()}-${currentUser?.uid || "local"}-${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    by: currentUser?.uid || null,
+    createdAt: Date.now(),
+  };
+}
+
+async function emitRoomSoundEvent(type) {
+  if (!roomId || !currentUser || !firebaseReady) {
+    return;
+  }
+
+  await update(roomNodeRef(), {
+    soundEvent: createRoomSoundEvent(type),
+    updatedAt: Date.now(),
+  });
+}
+
+function handleRoomSoundEvent(event) {
+  if (!event?.id || event.id === lastRoomSoundEventId) {
+    return;
+  }
+
+  lastRoomSoundEventId = event.id;
+  const age = Date.now() - Number(event.createdAt || 0);
+  if (age > 12000 || age < -5000) {
+    return;
+  }
+
+  if (event.type === "shuffle") {
+    audio.playShuffle();
+  }
+
+  if (event.type === "reset") {
+    audio.playResetLaugh();
+  }
 }
 
 function renderStatusText() {
@@ -787,7 +832,7 @@ async function startNewCard() {
       lineCount: 0,
       updatedAt: Date.now(),
     });
-    audio.playShuffle();
+    await emitRoomSoundEvent("shuffle");
     setRoomMessage("已更換你的數字卡");
     return;
   }
@@ -811,11 +856,13 @@ async function restartSameCard() {
         return room;
       }
 
+      const soundEvent = createRoomSoundEvent("reset");
       room.calledNumbers = [];
       room.currentNumber = null;
       room.status = "waiting";
       room.spin = null;
       room.winner = null;
+      room.soundEvent = soundEvent;
       room.updatedAt = Date.now();
 
       Object.keys(room.players || {}).forEach((uid) => {
@@ -826,7 +873,6 @@ async function restartSameCard() {
       return room;
     });
 
-    audio.playResetLaugh();
     setRoomMessage("房間已重開");
     return;
   }
@@ -856,6 +902,7 @@ async function createRoom() {
       calledNumbers: [],
       lastSpinId: 0,
       spin: null,
+      soundEvent: null,
       winner: null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -964,6 +1011,7 @@ function handleRoomSnapshot(snapshot) {
 
   const previousCurrent = lastCurrentNumber;
   roomState = snapshot.val();
+  handleRoomSoundEvent(roomState.soundEvent);
   const player = roomState.players?.[currentUser?.uid];
   const roomCard = normalizeCard(player?.cardNumbers);
 
@@ -1166,7 +1214,10 @@ async function initializeAuth() {
 }
 
 function primeAudio() {
-  audio.unlock().then(renderSoundButton);
+  audio.unlock().then(() => {
+    renderSoundButton();
+    renderAward();
+  });
 }
 
 function dismissAward() {
@@ -1210,8 +1261,17 @@ joinRoomButton.addEventListener("click", () => {
 });
 copyRoomButton.addEventListener("click", copyRoomLink);
 soundButton.addEventListener("click", () => {
+  if (audio.isSupported() && !audio.isUnlocked()) {
+    audio.setEnabled(true);
+    primeAudio();
+    return;
+  }
   audio.toggle();
   renderSoundButton();
+});
+soundPrompt.addEventListener("click", () => {
+  audio.setEnabled(true);
+  primeAudio();
 });
 awardCloseButton.addEventListener("click", dismissAward);
 awardOverlay.addEventListener("click", (event) => {

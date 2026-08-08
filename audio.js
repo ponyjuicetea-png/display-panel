@@ -1,6 +1,7 @@
 window.createAudioManager = function createAudioManager(storageKey = "bingoSoundEnabled") {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const supported = Boolean(AudioContextClass);
+  const masterVolume = 1.35;
   let context = null;
   let master = null;
   let compressor = null;
@@ -25,7 +26,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
     compressor.release.value = 0.24;
 
     master = context.createGain();
-    master.gain.value = enabled ? 0.72 : 0;
+    master.gain.value = enabled ? masterVolume : 0;
     compressor.connect(master);
     master.connect(context.destination);
 
@@ -47,7 +48,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
     if (master && context) {
       const now = context.currentTime;
       master.gain.cancelScheduledValues(now);
-      master.gain.setTargetAtTime(enabled ? 0.72 : 0, now, 0.04);
+      master.gain.setTargetAtTime(enabled ? masterVolume : 0, now, 0.04);
     }
   }
 
@@ -133,7 +134,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       return null;
     }
     activeSpinBus = ctx.createGain();
-    activeSpinBus.gain.value = enabled ? 0.95 : 0;
+    activeSpinBus.gain.value = enabled ? 1.25 : 0;
     activeSpinBus.connect(compressor);
     return activeSpinBus;
   }
@@ -180,7 +181,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
           start: pulse,
           duration: 0.055,
           type: "square",
-          gain: 0.09,
+          gain: 0.22,
           attack: 0.004,
           release: 0.025,
           destination: bus,
@@ -190,7 +191,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
           start: pulse,
           duration: 0.04,
           type: "sine",
-          gain: 0.035,
+          gain: 0.08,
           attack: 0.003,
           release: 0.03,
           destination: bus,
@@ -208,7 +209,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       scheduleNoise({
         start: tickTime,
         duration: 0.024,
-        gain: 0.038 * (1 - progress * 0.42),
+        gain: 0.085 * (1 - progress * 0.42),
         frequency: 2600 - progress * 1200,
         q: 2.4,
         destination: bus,
@@ -218,7 +219,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
         start: tickTime,
         duration: 0.028,
         type: "triangle",
-        gain: 0.045 * (1 - progress * 0.35),
+        gain: 0.095 * (1 - progress * 0.35),
         attack: 0.002,
         release: 0.025,
         destination: bus,
@@ -233,7 +234,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       start,
       duration: seconds * 0.94,
       type: "sawtooth",
-      gain: 0.012,
+      gain: 0.035,
       attack: 0.03,
       release: 0.12,
       destination: bus,
@@ -258,7 +259,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       start,
       duration: 0.12,
       type: hit ? "sine" : "triangle",
-      gain: hit ? 0.12 : 0.08,
+      gain: hit ? 0.26 : 0.16,
       release: 0.09,
     });
     scheduleTone({
@@ -266,7 +267,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       start: start + 0.045,
       duration: 0.12,
       type: "sine",
-      gain: hit ? 0.08 : 0.055,
+      gain: hit ? 0.18 : 0.12,
       release: 0.1,
     });
   }
@@ -288,7 +289,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       scheduleNoise({
         start: time,
         duration: 0.05,
-        gain: 0.055,
+        gain: 0.14,
         frequency: 1700 + index * 260,
         q: 1.5,
         filterType: "highpass",
@@ -298,7 +299,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
         start: time,
         duration: 0.035,
         type: "triangle",
-        gain: 0.035,
+        gain: 0.09,
         release: 0.04,
       });
     }
@@ -323,7 +324,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
         start: time,
         duration: 0.095,
         type: "sawtooth",
-        gain: 0.075,
+        gain: 0.18,
         attack: 0.006,
         release: 0.07,
         glideTo: frequency * 0.74,
@@ -331,7 +332,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       scheduleNoise({
         start: time,
         duration: 0.07,
-        gain: 0.025,
+        gain: 0.07,
         frequency: 720,
         q: 5,
       });
@@ -341,7 +342,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       start: start + 0.82,
       duration: 0.2,
       type: "triangle",
-      gain: 0.08,
+      gain: 0.17,
       release: 0.12,
       glideTo: 72,
     });
@@ -374,7 +375,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
           start: start + chordIndex * 0.28 + noteIndex * 0.018,
           duration: chordIndex === chords.length - 1 ? 0.7 : 0.22,
           type: "triangle",
-          gain: 0.055,
+          gain: 0.14,
           attack: 0.012,
           release: 0.18,
         });
@@ -385,7 +386,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
       scheduleNoise({
         start: start + 0.16 + index * 0.07,
         duration: 0.045,
-        gain: 0.022,
+        gain: 0.065,
         frequency: 3600 + Math.random() * 1800,
         q: 1.2,
         filterType: "highpass",
@@ -396,6 +397,7 @@ window.createAudioManager = function createAudioManager(storageKey = "bingoSound
   return {
     isEnabled: () => enabled,
     isSupported: () => supported,
+    isUnlocked: () => !supported || context?.state === "running",
     unlock,
     toggle,
     setEnabled,
