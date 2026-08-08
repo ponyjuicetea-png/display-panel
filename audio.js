@@ -1,4 +1,4 @@
-export function createAudioManager(storageKey = "bingoSoundEnabled") {
+window.createAudioManager = function createAudioManager(storageKey = "bingoSoundEnabled") {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const supported = Boolean(AudioContextClass);
   let context = null;
@@ -406,4 +406,4 @@ export function createAudioManager(storageKey = "bingoSoundEnabled") {
     playResetLaugh,
     playVictory,
   };
-}
+};

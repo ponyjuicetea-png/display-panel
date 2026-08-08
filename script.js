@@ -1,19 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInAnonymously,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import {
-  get,
-  getDatabase,
-  onDisconnect,
-  onValue,
-  ref,
-  runTransaction,
-  set,
-  update,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-database.js";
+let initializeApp;
+let getAuth;
+let onAuthStateChanged;
+let signInAnonymously;
+let get;
+let getDatabase;
+let onDisconnect;
+let onValue;
+let ref;
+let runTransaction;
+let set;
+let update;
 
 function createSilentAudioManager() {
   return {
@@ -79,10 +75,10 @@ const awardWinnerName = document.querySelector("#awardWinnerName");
 const awardWinnerDetail = document.querySelector("#awardWinnerDetail");
 const ctx = wheelCanvas.getContext("2d");
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-let audio = createSilentAudioManager();
+let app = null;
+let db = null;
+let auth = null;
+let audio = window.createAudioManager ? window.createAudioManager() : createSilentAudioManager();
 const palette = ["#dc3f45", "#f3b735", "#008f8a", "#7257bd", "#5e9f45"];
 
 let cardNumbers = [];
@@ -103,6 +99,7 @@ let lastAnimatedSpinId = null;
 let lastSyncedLineCount = null;
 let lastCelebratedWinnerKey = null;
 let dismissedWinnerKey = null;
+let firebaseReady = false;
 let authReady = false;
 
 function range(count) {
@@ -277,10 +274,16 @@ function generateRoomCode() {
 }
 
 function roomNodeRef(code = roomId) {
+  if (!db || !ref) {
+    throw new Error("Firebase 尚未連線");
+  }
   return ref(db, `rooms/${code}`);
 }
 
 function playerNodeRef(code = roomId, uid = currentUser?.uid) {
+  if (!db || !ref) {
+    throw new Error("Firebase 尚未連線");
+  }
   return ref(db, `rooms/${code}/players/${uid}`);
 }
 
@@ -434,10 +437,12 @@ function renderPlayers() {
 function renderRoomControls() {
   activeRoomCodeElement.textContent = roomId || "------";
   roomCodeInput.value = roomId || roomCodeInput.value;
-  connectionStatusElement.textContent = authReady ? (roomId ? "已連線" : "已登入") : "連線準備中";
+  connectionStatusElement.textContent = authReady
+    ? (roomId ? "已連線" : "已登入")
+    : (firebaseReady ? "登入中" : "單機模式");
   copyRoomButton.disabled = !roomId;
-  createRoomButton.disabled = !authReady || isSpinning;
-  joinRoomButton.disabled = !authReady || isSpinning;
+  createRoomButton.disabled = !firebaseReady || !authReady || isSpinning;
+  joinRoomButton.disabled = !firebaseReady || !authReady || isSpinning;
   renderSoundButton();
 }
 
@@ -1081,7 +1086,57 @@ function initializePlayerName() {
   }
 }
 
-function initializeAuth() {
+async function loadFirebase() {
+  if (window.location.protocol === "file:") {
+    firebaseReady = false;
+    authReady = false;
+    setRoomMessage("直接開檔案：單機模式；多人請用 localhost 或 GitHub Pages");
+    renderRoomControls();
+    return false;
+  }
+
+  try {
+    const [appModule, authModule, databaseModule] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/12.17.0/firebase-database.js"),
+    ]);
+
+    initializeApp = appModule.initializeApp;
+    getAuth = authModule.getAuth;
+    onAuthStateChanged = authModule.onAuthStateChanged;
+    signInAnonymously = authModule.signInAnonymously;
+    get = databaseModule.get;
+    getDatabase = databaseModule.getDatabase;
+    onDisconnect = databaseModule.onDisconnect;
+    onValue = databaseModule.onValue;
+    ref = databaseModule.ref;
+    runTransaction = databaseModule.runTransaction;
+    set = databaseModule.set;
+    update = databaseModule.update;
+
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    auth = getAuth(app);
+    firebaseReady = true;
+    renderRoomControls();
+    return true;
+  } catch (error) {
+    firebaseReady = false;
+    authReady = false;
+    connectionStatusElement.textContent = "連線失敗";
+    setRoomMessage(`多人連線載入失敗：${error.message}`);
+    renderRoomControls();
+    return false;
+  }
+}
+
+async function initializeAuth() {
+  const canUseFirebase = await loadFirebase();
+  if (!canUseFirebase) {
+    return;
+  }
+
   onAuthStateChanged(auth, (user) => {
     currentUser = user;
     authReady = Boolean(user);
@@ -1120,15 +1175,10 @@ function dismissAward() {
 }
 
 function loadAudioManager() {
-  import("./audio.js")
-    .then((module) => {
-      audio.stopSpin();
-      audio = module.createAudioManager();
-      renderSoundButton();
-    })
-    .catch(() => {
-      renderSoundButton();
-    });
+  if (window.createAudioManager && !audio.isSupported()) {
+    audio = window.createAudioManager();
+  }
+  renderSoundButton();
 }
 
 document.addEventListener("pointerdown", primeAudio, { capture: true });
